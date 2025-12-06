@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace library_service_api.Models
 {
@@ -10,11 +11,16 @@ namespace library_service_api.Models
         [MaxLength(200)]
         public string Title { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(150)]
-        public string Author { get; set; } = string.Empty;
-
         [MaxLength(1000)]
         public string Description { get; set; } = string.Empty;
+
+        // 🔗 Author Relationship
+        public int AuthorId { get; set; }
+
+        [JsonIgnore]
+        public Author Author { get; set; }
+
+        // 🔗 BookCopy Relationship
+        public ICollection<BookCopy> BookCopies { get; set; } = new List<BookCopy>();
     }
 }

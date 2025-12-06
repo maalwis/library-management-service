@@ -2,7 +2,7 @@ import { Book } from '../types/book';
 import 'server-only';
 
 export async function getBooks(): Promise<Book[]> {
-  const res = await fetch('http://localhost:5115/api/v1/books', {
+  const res = await fetch('https://localhost:7190/api/v1/books', {
 
     cache: 'no-store',
     

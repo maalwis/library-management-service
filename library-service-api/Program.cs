@@ -1,5 +1,4 @@
 using library_service_api.Data;
-using library_service_api.Repositories;
 using library_service_api.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -13,9 +12,9 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddScoped<IBookService, BookService> ();
+builder.Services.AddScoped<IBookService, BookServiceImpl> ();
 
-builder.Services.AddScoped<IBookRepository, BookRepository>();
+//builder.Services.AddScoped<IBookRepository, BookRepository>();
 
 // Add DbContext with SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
