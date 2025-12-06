@@ -1,0 +1,12 @@
+[
+  {
+    "ContainingType": "library_service_api.Controllers.BookController",
+    "Method": "GetBooks",
+    "RelativePath": "api/v1/books",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]
