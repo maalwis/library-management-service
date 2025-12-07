@@ -1,38 +1,27 @@
-// app/books/page.tsx
-import { getBooks } from '../../lib/books';
-import { Book } from '../../types/book';
-
-export const metadata = {
-  title: 'Books — Library',
-  description: 'List of books from the API',
-};
+import { booksService } from '@/services/books.service';
+import { BookList } from '@/components/books/BookList';
+import Link from 'next/link';
 
 export default async function BooksPage() {
-  let books: Book[] = [];
+    const books = await booksService.getAll();
 
-  try {
-    books = await getBooks();
-  } catch (error) {
-    console.error('Error fetching books:', error);
-    
-  }
+    return (
+        <div className="container mx-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Library Books</h1>
+                <Link
+                    href="/books/new"
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                    Add New Book
+                </Link>
+            </div>
 
-  return (
-    <main className="p-8 bg-zinc-50 dark:bg-black min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">Books Library</h1>
-      {books.length === 0 ? (
-        <p>No books available.</p>
-      ) : (
-        <ul className="space-y-4">
-          {books.map((book) => (
-            <li key={book.id} className="border p-4 rounded shadow bg-white dark:bg-gray-800">
-              <h2 className="text-xl font-semibold">{book.title}</h2>
-              <p className="text-gray-600 dark:text-gray-400">By: {book.author}</p>
-              <p className="mt-2">{book.description}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
-  );
+            {books.length === 0 ? (
+                <p className="text-gray-600">No books found in the library.</p>
+            ) : (
+                <BookList books={books} />
+            )}
+        </div>
+    );
 }
