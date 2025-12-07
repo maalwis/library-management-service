@@ -55,6 +55,9 @@ namespace library_service_api.Services
         // Creates a new book entry or updates book-copies if the book already exists.
         public async Task<BookResponseDto> CreateAsync(BookCreateDto dto)
         {
+            // Validate input
+            ValidateBookCreateDto(dto);
+
             // Check if the book already exists
             var existingBook = await GetBookByTitleAsync(dto.Title);
 
@@ -97,6 +100,9 @@ namespace library_service_api.Services
         //Method to update a book
         public async Task<BookResponseDto?> UpdateAsync(int id, BookUpdateDto dto)
         {
+            // Validate input
+            ValidateBookUpdateDto(dto);
+
             var existingBook = await GetBookByIdAsync(id);
 
             if (existingBook == null)
@@ -152,6 +158,7 @@ namespace library_service_api.Services
             return true;
         }
 
+        // Private method: Get Book by title
         private async Task<Book?> GetBookByTitleAsync(string title)
         {
             return await _context.Books
@@ -160,6 +167,7 @@ namespace library_service_api.Services
                 .FirstOrDefaultAsync(b => b.Title.ToLower() == title.ToLower());
         }
 
+                // Private method: Get Book by Id
         private async Task<Book?> GetBookByIdAsync(int id)
         {
             return await _context.Books
@@ -168,12 +176,14 @@ namespace library_service_api.Services
                 .FirstOrDefaultAsync(b => b.Id == id);
         }
 
+        // Private method: Get Author by name
         private async Task<Author?> GetAuthorByNameAsync(string authorName)
         {
             return await _context.Authors
                 .FirstOrDefaultAsync(a => a.Name.ToLower() == authorName.ToLower());
         }
 
+        // Private method: Create new record - Author
         private async Task<Author> CreateNewAuthor(String authorName) 
         {
             var author = new Author { Name = authorName };
@@ -183,6 +193,7 @@ namespace library_service_api.Services
             return author;
         }
 
+        // Private method: Create new record - Book
         private async Task<Book> CreateNewBook(String title, String description, int authorId) 
         {
             var book = new Book
@@ -198,6 +209,7 @@ namespace library_service_api.Services
 
         }
 
+        // Private method: Create new record - BookCopy
         private async Task<BookCopy> CreateNewBookCopy(int bookId, int totalCopies, int availableCopies)
         {
             var copy = new BookCopy
@@ -212,6 +224,7 @@ namespace library_service_api.Services
             return copy;
         }
 
+        // Private method: Mapper - Book to BookResponseDto
         private BookResponseDto MapToDto(Book book, Author author, BookCopy copy)
         {
             return new BookResponseDto
@@ -223,6 +236,50 @@ namespace library_service_api.Services
                 TotalCopies = copy.TotalCopies,
                 AvailableCopies = copy.AvailableCopies
             };
+        }
+
+        /// Validates the BookCreateDto input
+        private void ValidateBookCreateDto(BookCreateDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Title))
+                throw new ArgumentException("Title is required and cannot be empty.");
+
+            if (dto.Title.Length > 200)
+                throw new ArgumentException("Title cannot exceed 200 characters.");
+
+            if (string.IsNullOrWhiteSpace(dto.AuthorName))
+                throw new ArgumentException("Author name is required and cannot be empty.");
+
+            if (dto.AuthorName.Length > 150)
+                throw new ArgumentException("Author name cannot exceed 150 characters.");
+
+            if (!string.IsNullOrWhiteSpace(dto.Description) && dto.Description.Length > 1000)
+                throw new ArgumentException("Description cannot exceed 1000 characters.");
+
+            if (dto.TotalCopies < 1)
+                throw new ArgumentException("Total copies must be at least 1.");
+
+            if (dto.TotalCopies > 9999)
+                throw new ArgumentException("Total copies cannot exceed 9999.");
+        }
+
+        /// Validates the BookUpdateDto input
+        private void ValidateBookUpdateDto(BookUpdateDto dto)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.Title) && dto.Title.Length > 200)
+                throw new ArgumentException("Title cannot exceed 200 characters.");
+
+            if (!string.IsNullOrWhiteSpace(dto.AuthorName) && dto.AuthorName.Length > 150)
+                throw new ArgumentException("Author name cannot exceed 150 characters.");
+
+            if (!string.IsNullOrWhiteSpace(dto.Description) && dto.Description.Length > 1000)
+                throw new ArgumentException("Description cannot exceed 1000 characters.");
+
+            if (dto.TotalCopies.HasValue && dto.TotalCopies.Value < 0)
+                throw new ArgumentException("Total copies cannot be negative.");
+
+            if (dto.AvailableCopies.HasValue && dto.AvailableCopies.Value < 0)
+                throw new ArgumentException("Available copies cannot be negative.");
         }
 
     }

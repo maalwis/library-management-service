@@ -3087,11 +3087,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-system\\library-service-api\\library-service-api\\library-service-api.csproj",
+      "projectUniqueName": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-service\\library-service-api\\library-service-api.csproj",
       "projectName": "library-service-api",
-      "projectPath": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-system\\library-service-api\\library-service-api\\library-service-api.csproj",
+      "projectPath": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-service\\library-service-api\\library-service-api.csproj",
       "packagesPath": "C:\\Users\\Abishek Alwis\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-system\\library-service-api\\library-service-api\\obj\\",
+      "outputPath": "C:\\Users\\Abishek Alwis\\Desktop\\library-management-service\\library-service-api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
