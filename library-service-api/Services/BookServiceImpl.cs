@@ -52,130 +52,97 @@ namespace library_service_api.Services
         }
 
         // Method to create a book
-        // Creates a new book entry or updates copies if the book already exists.
+        // Creates a new book entry or updates book-copies if the book already exists.
         public async Task<BookResponseDto> CreateAsync(BookCreateDto dto)
         {
-            // Attempt to find an existing book by title (case-insensitive).
-            // Includes related Author and BookCopy data because we may need them below.
-            var existingBook = await _context.Books
-                .Include(b => b.BookCopies)
-                .Include(b => b.Author)
-                .FirstOrDefaultAsync(b => b.Title.ToLower() == dto.Title.ToLower());
+            // Check if the book already exists
+            var existingBook = await GetBookByTitleAsync(dto.Title);
 
-            // Attempt to find the author (case-insensitive).
-            // This is needed whether we are creating a new book or updating an existing one.
-            var author = await _context.Authors
-                .FirstOrDefaultAsync(a => a.Name.ToLower() == dto.AuthorName.ToLower());
-
-            // If both the book and its author already exist, update the existing copies instead of creating a new book.
-            if (existingBook != null && author != null)
+            if (existingBook != null)
             {
-                // Retrieve the existing BookCopy entry for this book.
-                var existingBookCopy = await _context.BookCopies
-                    .FirstOrDefaultAsync(c => c.BookId == existingBook.Id);
+                // Book exists, make sure it has an author
+                if (existingBook.Author == null)
+                    throw new Exception("Book exists but has no author. Data may be corrupted.");
 
-                // If the book exists but no BookCopy is found, the data is inconsistent and should be reported.
+                // Check if a BookCopy exists
+                var existingBookCopy = existingBook.BookCopies.FirstOrDefault();
                 if (existingBookCopy == null)
-                {
                     throw new Exception("Book exists but has no copy record. Data may be corrupted.");
-                }
 
-                // Increase the total and available copies for the existing book.
-                existingBookCopy.TotalCopies += 1;
-                existingBookCopy.AvailableCopies += 1;
+                // Increase copies
+                existingBookCopy.TotalCopies += dto.TotalCopies;
+                existingBookCopy.AvailableCopies += dto.TotalCopies;
 
                 await _context.SaveChangesAsync();
 
-                return MapToDto(existingBook, author, existingBookCopy);
+                return MapToDto(existingBook, existingBook.Author, existingBookCopy);
             }
 
-            // If the author did not exist, create a new one.
+            // Book does not exist, ensure author exists
+            var author = await GetAuthorByNameAsync(dto.AuthorName);
             if (author == null)
-            {
-                author = new Author { Name = dto.AuthorName };
-                _context.Authors.Add(author);
-                await _context.SaveChangesAsync();
-            }
+                author = await CreateNewAuthor(dto.AuthorName);
 
-            // Create and save the new book.
-            var book = new Book
-            {
-                Title = dto.Title,
-                Description = dto.Description,
-                AuthorId = author.Id
-            };
-            _context.Books.Add(book);
-            await _context.SaveChangesAsync();
+            // Create new book
+            var book = await CreateNewBook(dto.Title, dto.Description, author.Id);
 
-            // Create the initial BookCopy record for this new book.
-            var copy = new BookCopy
-            {
-                BookId = book.Id,
-                TotalCopies = dto.TotalCopies,
-                AvailableCopies = dto.TotalCopies
-            };
-            _context.BookCopies.Add(copy);
-            await _context.SaveChangesAsync();
+            // Create initial BookCopy
+            var copy = await CreateNewBookCopy(book.Id, dto.TotalCopies, dto.TotalCopies);
 
-            // Return the newly created book mapped to a DTO.
+            // Return DTO
             return MapToDto(book, author, copy);
-
         }
 
-        // Method to update a book
+
+        //Method to update a book
         public async Task<BookResponseDto?> UpdateAsync(int id, BookUpdateDto dto)
         {
-            var book = await _context.Books
-                .Include(b => b.Author)
-                .Include(b => b.BookCopies)
-                .FirstOrDefaultAsync(b => b.Id == id);
+            var existingBook = await GetBookByIdAsync(id);
 
-            if (book == null) return null;
+            if (existingBook == null)
+                throw new Exception($"Book with ID {id} does not exist.");
 
-            book.Title = dto.Title;
-            book.Description = dto.Description;
+            // Update basic book properties
+            existingBook.Title = dto.Title;
+            existingBook.Description = dto.Description;
 
-            var author = await _context.Authors
-                .FirstOrDefaultAsync(a => a.Name.ToLower() == dto.AuthorName.ToLower());
-
+            // Handle author - get existing or create new
+            var author = await GetAuthorByNameAsync(dto.AuthorName);
             if (author == null)
             {
-                author = new Author { Name = dto.AuthorName };
-                _context.Authors.Add(author);
-                await _context.SaveChangesAsync();
+                author = await CreateNewAuthor(dto.AuthorName);
             }
-            book.AuthorId = author.Id;
+            existingBook.AuthorId = author.Id;
 
-            var copy = book.BookCopies.FirstOrDefault();
+            // Handle book copy updates if provided
+            var copy = existingBook.BookCopies.FirstOrDefault();
             if (copy != null)
             {
-                if (dto.TotalCopies.HasValue) copy.TotalCopies = dto.TotalCopies.Value;
-                if (dto.AvailableCopies.HasValue) copy.AvailableCopies = dto.AvailableCopies.Value;
+                if (dto.TotalCopies.HasValue)
+                    copy.TotalCopies = dto.TotalCopies.Value;
+                if (dto.AvailableCopies.HasValue)
+                    copy.AvailableCopies = dto.AvailableCopies.Value;
+            }
+            else if (dto.TotalCopies.HasValue && dto.AvailableCopies.HasValue)
+            {
+                // If no copy exists but copy data is provided, create a new one
+                copy = await CreateNewBookCopy(existingBook.Id, dto.TotalCopies.Value, dto.AvailableCopies.Value);
             }
 
             await _context.SaveChangesAsync();
 
-            return new BookResponseDto
-            {
-                Id = book.Id,
-                Title = book.Title,
-                Description = book.Description,
-                AuthorName = author.Name,
-                TotalCopies = copy?.TotalCopies ?? 0,
-                AvailableCopies = copy?.AvailableCopies ?? 0
-            };
+            return MapToDto(existingBook, author, copy);
         }
 
         // Soft delete a book
         public async Task<bool> SoftDeleteAsync(int id)
         {
-            var book = await _context.Books
-                .Include(b => b.BookCopies)
-                .FirstOrDefaultAsync(b => b.Id == id);
+            var existingBook = await GetBookByIdAsync(id);
 
-            if (book == null) return false;
+            if (existingBook == null)
+                throw new Exception($"Book with ID {id} does not exist.");
 
-            foreach (var copy in book.BookCopies)
+            foreach (var copy in existingBook.BookCopies)
             {
                 copy.TotalCopies = 0;
                 copy.AvailableCopies = 0;
@@ -183,6 +150,66 @@ namespace library_service_api.Services
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private async Task<Book?> GetBookByTitleAsync(string title)
+        {
+            return await _context.Books
+                .Include(b => b.BookCopies)
+                .Include(b => b.Author)
+                .FirstOrDefaultAsync(b => b.Title.ToLower() == title.ToLower());
+        }
+
+        private async Task<Book?> GetBookByIdAsync(int id)
+        {
+            return await _context.Books
+                .Include(b => b.Author)
+                .Include(b => b.BookCopies)
+                .FirstOrDefaultAsync(b => b.Id == id);
+        }
+
+        private async Task<Author?> GetAuthorByNameAsync(string authorName)
+        {
+            return await _context.Authors
+                .FirstOrDefaultAsync(a => a.Name.ToLower() == authorName.ToLower());
+        }
+
+        private async Task<Author> CreateNewAuthor(String authorName) 
+        {
+            var author = new Author { Name = authorName };
+            _context.Authors.Add(author);
+            await _context.SaveChangesAsync();
+
+            return author;
+        }
+
+        private async Task<Book> CreateNewBook(String title, String description, int authorId) 
+        {
+            var book = new Book
+            {
+                Title = title,
+                Description = description,
+                AuthorId = authorId
+            };
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            return book;
+
+        }
+
+        private async Task<BookCopy> CreateNewBookCopy(int bookId, int totalCopies, int availableCopies)
+        {
+            var copy = new BookCopy
+            {
+                BookId = bookId,
+                TotalCopies = totalCopies,
+                AvailableCopies = availableCopies
+            };
+            _context.BookCopies.Add(copy);
+            await _context.SaveChangesAsync();
+
+            return copy;
         }
 
         private BookResponseDto MapToDto(Book book, Author author, BookCopy copy)
@@ -193,8 +220,8 @@ namespace library_service_api.Services
                 Title = book.Title,
                 Description = book.Description,
                 AuthorName = author.Name,
-                TotalCopies = copy?.TotalCopies ?? 0,
-                AvailableCopies = copy?.AvailableCopies ?? 0
+                TotalCopies = copy.TotalCopies,
+                AvailableCopies = copy.AvailableCopies
             };
         }
 
