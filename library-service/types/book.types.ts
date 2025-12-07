@@ -7,7 +7,6 @@ export interface Book {
     availableCopies: number;
 }
 
-// Matches BookCreateDto from .NET
 export interface BookCreateDto {
     title: string;
     description: string;
@@ -15,7 +14,6 @@ export interface BookCreateDto {
     totalCopies: number;
 }
 
-// Matches BookUpdateDto from .NET
 export interface BookUpdateDto {
     title?: string;
     description?: string;
